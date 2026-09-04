@@ -55,9 +55,14 @@ Pré-requisitos: Node.js 18+ e um Postgres acessível (local ou remoto).
 ```bash
 npm install
 cp .env.example .env      # edite DATABASE_URL e SESSION_SECRET
-npm run setup             # roda as migrations e o seed (dados de exemplo)
 npm start                 # sobe o servidor em http://localhost:3000
 ```
+
+Não precisa rodar nada além disso: o servidor aplica as migrations e o seed
+(dados de exemplo) sozinho toda vez que sobe, e é seguro repetir — ele nunca
+apaga ou duplica dados que já existem, só cria o que ainda está faltando.
+`npm run migrate` e `npm run seed` continuam disponíveis separadamente, caso
+você queira rodá-los sem subir o servidor inteiro.
 
 Abra `http://localhost:3000`. No primeiro acesso, use um dos e-mails já
 cadastrados (por exemplo `gabriel.criabitat@gmail.com`, que já é admin) e crie
@@ -96,35 +101,60 @@ que o próprio GitHub mostra para enviar (`git remote add origin ...` e
 ### 3. Adicione o banco Postgres
 
 1. Dentro do mesmo projeto no Railway, clique em **+ New → Database →
-   Add PostgreSQL**.
-2. O Railway cria o banco e já injeta a variável `DATABASE_URL` no serviço da
-   sua aplicação automaticamente — você não precisa copiar/colar nada.
+   Add PostgreSQL**. Isso cria um segundo "card" no projeto, separado do
+   card da sua aplicação.
+2. O Railway gera as credenciais do banco (incluindo uma `DATABASE_URL`), mas
+   elas ficam guardadas **dentro do serviço do Postgres** — o serviço da sua
+   aplicação (Node.js) ainda não enxerga isso automaticamente. Esse último
+   passo é feito manualmente na próxima etapa.
 
 ### 4. Configure as variáveis de ambiente do serviço da aplicação
 
-No serviço do Node.js (não no do Postgres), vá em **Variables** e adicione:
+Clique no card do **serviço Node.js** (não no card do Postgres) e abra a aba
+**Variables**. Adicione três variáveis:
 
-| Variável | Valor |
-|---|---|
-| `SESSION_SECRET` | uma string aleatória longa (gere com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
-| `NODE_ENV` | `production` |
+**a) `DATABASE_URL` (conectando ao Postgres)**
 
-`DATABASE_URL` e `PORT` já vêm prontos do Railway — não precisa mexer.
+1. Clique em **New Variable**.
+2. No campo de nome, comece a digitar `DATABASE_URL` — o Railway mostra uma
+   sugestão de autocompletar referenciando o banco Postgres do projeto
+   (algo como `Postgres.DATABASE_URL`). Clique nessa sugestão em vez de
+   digitar um valor manualmente.
+3. Confirme/salve. Agora o serviço da aplicação está de fato ligado ao banco.
 
-### 5. Rode as migrations e o seed no banco do Railway
+**b) `SESSION_SECRET`**
 
-Depois do primeiro deploy, rode uma única vez (com a Railway CLI instalada e
-logada — `npm i -g @railway/cli` e `railway login`):
+Gere uma string aleatória localmente (no PowerShell, dentro da pasta do
+projeto):
 
-```bash
-railway link          # conecta a pasta do projeto ao projeto certo no Railway
-railway run npm run migrate
-railway run npm run seed
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Isso cria as tabelas e popula o banco com os 28 usuários / 27 pessoas / 61
-turnos de exemplo (o seed nunca sobrescreve dados que já existirem — pode
-rodar de novo sem medo de duplicar nada).
+Copie o texto que aparecer e cole como valor de uma nova variável chamada
+`SESSION_SECRET`.
+
+**c) `NODE_ENV`**
+
+Adicione uma variável `NODE_ENV` com valor `production`.
+
+`PORT` não precisa ser adicionado — o Railway injeta essa variável sozinho
+em todo serviço web. Depois de salvar as três variáveis acima, o Railway
+publica um novo deploy automaticamente.
+
+### 5. Nada a fazer aqui — o próprio servidor cria as tabelas e popula o banco
+
+Diferente de outros guias que pedem para rodar `railway run npm run migrate`
+manualmente, este projeto não precisa disso: toda vez que o servidor sobe
+(no primeiro deploy e em qualquer deploy seguinte), ele mesmo cria as
+tabelas que faltarem e popula o banco com os 28 usuários / 27 pessoas / 61
+turnos de exemplo antes de começar a aceitar requisições — visível nos
+**Logs** do serviço no Railway como "Applying database migrations..." e
+"Applying seed data...". É seguro: ele nunca apaga ou duplica dados que já
+existirem, só cria o que está faltando. (Rodar isso manualmente pelo seu
+computador com `railway run` tende a dar problema, porque o endereço interno
+do Postgres do Railway só é alcançável de dentro da rede do próprio Railway —
+por isso o servidor faz isso sozinho, já rodando lá dentro.)
 
 ### 6. Acesse
 
